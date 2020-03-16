@@ -1,15 +1,15 @@
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 from matplotlib import pyplot as plt
-from joblib import Parallel, delayed
 import cartopy.crs as ccrs
-import multiprocessing as mp
 import numpy as np
 import xarray as xr
 import time as tm
+import matplotlib.ticker as mticker
+import concurrent.futures
+import datetime
 
 
 start = tm.perf_counter()
-num_cores = mp.cpu_count()
 rootgrp = xr.open_dataset("bigData.nc")                                           #opening the .nc file
 
 lat = np.array(rootgrp.variables['lat'])                                          #extract/copy the data of lat
@@ -41,42 +41,44 @@ modelsNames = [                                                                 
 
 
 #making graphs of O3 per hour
-def make_graph():
+def make_graph(hours):
     
     map_proj = ccrs.PlateCarree()
-    time = 0
+    fig = plt.figure()
 
-    for i in range(len(hour)):
-        time += 1
-        print('Hour', time)
-        fig = plt.figure()
+    for m in range(len(models)):
+        print('..............','Hours: ', hours,' Models: ', m, '.............. \n')
 
-        for m in range(len(models)):
+    #     ax1 = plt.subplot(4, 2, (m + 1), projection = map_proj)
+    #     ax1.coastlines(zorder = 3)
+    #     img = plt.contour(long, lat, models[m][hours, :, :], 1000, transform = map_proj)
+    #     plt.subplots_adjust(hspace = 0.4)
+    #     ax1.set_title(f'{modelsNames[m]}', fontsize = 9)
 
-            print('..............', (m + 1), '..............')
+    #     axins = inset_axes(ax1,
+    #             width = "7%",  
+    #             height = "500%",  
+    #             loc = 'lower left',
+    #             bbox_to_anchor = (1.2, 0., 1, 1),
+    #             bbox_transform = ax1.transAxes,
+    #             )
 
-            ax1 = plt.subplot(4, 2, (m + 1), projection = map_proj)
-            ax1.coastlines(zorder = 3)
-            img = plt.contour(long, lat, models[m][i, :, :], 1000, transform = ccrs.PlateCarree())
-            plt.subplots_adjust(hspace = 0.4)
-            ax1.set_title(f'{modelsNames[m]}', fontsize = 9)
+    # plt.colorbar(img, cax = axins, orientation="vertical")
+    # mticker.Locator.MAXTICKS = 2000
+    # fig.suptitle(f'O3 levels in {hours} hour(s)')
+    # plt.savefig(f'{hours}.png')
+    # plt.show()
 
-        axins = inset_axes(ax1,
-                    width = "7%",  
-                    height = "500%",  
-                    loc = 'lower left',
-                    bbox_to_anchor = (1.2, 0., 1, 1),
-                    bbox_transform = ax1.transAxes,
-                   )
+def parallel_processing():
+    with concurrent.futures.ProcessPoolExecutor(max_workers = 25) as executer: 
+        hours = [i for i in range(25)]
+        executer.map(make_graph, hours)
 
-        plt.colorbar(img, cax = axins, orientation="vertical")
-        finish = tm.perf_counter()
-        print(f'Finished in {round(finish-start,2)} second(s)')
-        fig.suptitle(f'O3 levels in {i} hour(s)')
-        plt.show()
-
-make_graph()
-
+if __name__ == '__main__':
+    parallel_processing()
+    
 finish = tm.perf_counter()
-print(f'Finished in {round(finish-start,2)} second(s)')
+tot_time = round(finish-start,0)
+time = datetime.timedelta(seconds = tot_time)
+print(f'Finished in {time} hours')
 
