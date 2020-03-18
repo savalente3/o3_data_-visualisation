@@ -11,7 +11,6 @@ from matplotlib.widgets import Button
 
 start = tm.perf_counter()
 rootgrp = xr.open_dataset("bigData.nc")                                           #opening the .nc file
-# color_input = 
 
 lat = np.array(rootgrp.variables['lat'])                                          #extract/copy the data of lat
 long = np.array(rootgrp.variables['lon'])                                         #extract/copy the data of lon
@@ -39,24 +38,40 @@ modelsNames = [                                                                 
     'silam_ozone',
 ]
 
+color_names = {
+            1: 'viridis', 
+            2: 'plasma', 
+            3: 'inferno', 
+            4: 'magma', 
+            5: 'cividis',
+}
+
+print('Colorsets: \n', '\n '.join("{}: {}".format(k, v) for k, v in color_names.items()))
+color_input = int(input('Chose a colorset for the graphs: '))
+print('\n                        STATUS')
+
 
 #making graphs of O3 per hour
 def make_graph(hours):
     map_proj = ccrs.PlateCarree()
-    fig = plt.figure()
+    fig = plt.figure(f'O3 in {hours}h')
 
     for m in range(len(models)):
-        print('..............','Hours: ', hours,' Models: ', (m + 1), '.............. \n')
+        print('\n ..............','Hours: ', hours,' Models: ', (m + 1), '.............. \n')
         
         ax1 = plt.subplot(4, 2, (m + 1), projection = map_proj)
         ax1.coastlines(zorder = 3)
-        img = plt.contour(long, lat, models[1][hours, :, :], 1000, transform = map_proj)            #magma 
         plt.subplots_adjust(hspace = 0.4)
-        ax1.set_title(f'{modelsNames[m]}', fontsize = 9)
+        ax1.set_title(f'{modelsNames[m]}', fontsize = 9)        
+
+        if color_input not in color_names:
+            img = plt.contour(long, lat, models[m][hours, :, :], 1000, transform = map_proj)            
+        else:
+            img = plt.contour(long, lat, models[m][hours, :, :], 1000, cmap = color_names[color_input], transform = map_proj)
 
     set_axis(ax1, hours, fig, img)
-    # plt.contour(img, cmap = 'cividis')           
-    plt.show()
+    quit_button(img)
+    plt.savefig(f'{hours}.png')
 
 
 def set_axis(ax1, hours, fig, img):
@@ -71,25 +86,31 @@ def set_axis(ax1, hours, fig, img):
     plt.colorbar(img, cax = axins, orientation = "vertical")
     mticker.Locator.MAXTICKS = 2000
     fig.suptitle(f'O3 levels in {hours} hour(s)')
-    # plt.savefig(f'{hours}.png')
 
+def quit_button(img):
 
+    def handler(*args, **kwargs):
+        print('Bye!')
+        plt.close('all')
 
-# def parallel_processing():
-#     with concurrent.futures.ProcessPoolExecutor(max_workers = 25) as executer: 
-#         hours = [i for i in range(25)]
-#         executer.map(make_graph, hours)
+    ax_color_button = plt.axes([0.825, 0.04, 0.14, 0.05])
+    color_button = Button(ax_color_button ,'Quit all')
+    color_button.on_clicked(handler)
+       
 
-# if __name__ == '__main__':
-#     parallel_processing()
+def parallel_processing():
+    with concurrent.futures.ProcessPoolExecutor(max_workers = 24) as executer: 
+        hours = [i for i in range(1,25)]
+        executer.map(make_graph, hours)
+  
 
-#calling functions
-make_graph(1)
+if __name__ == '__main__':
+    parallel_processing()
+    
 
 #timer of process
 finish = tm.perf_counter()
 tot_time = round(finish-start,0)
 time = datetime.timedelta(seconds = tot_time)
 print(f'Finished in {time} hours')
-
 
