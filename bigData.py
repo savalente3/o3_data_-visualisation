@@ -10,7 +10,6 @@ import datetime
 from matplotlib.widgets import Button
 import os
 
-start = tm.perf_counter()
 
 
 def open_file():
@@ -56,89 +55,74 @@ modelsNames = [                                                                 
 
 color_names = {                                                                      #dic of color names                       
                 1: 'viridis', 
-                2: 'plasma', 
+                2: 'jet', 
                 3: 'inferno', 
-                4: 'magma', 
-                5: 'cividis',
-    }
+                4: 'cubehelix', 
+                5: 'cividis'
+            }
 
 
-    
-while True:
-    print('Colorsets: \n', '\n '.join("{}: {}".format(k, v) for k, v in color_names.items())) #print dic of color names
-    color_input = input('Chose a colorset for the graphs: ')                           #input for color names
+def input_colour():    
+    while True:
+        print('Colorsets: \n', '\n '.join("{}: {}".format(k, v) for k, v in color_names.items()))       #print dic of color names
+        color_input = input('Chose a colorset for the graphs: ')                                        #input for color names
 
-    try:
-        val_color = int(color_input)                                                    #convert input color names to int
-        if val_color  in range(1,6):                                                    #if input color names is between 1 and 5
-            view_graphs = input('Do you want to view the graphs? (yes/no): ')           #prints show graps
+        try:
+            input_colour.val_color = int(color_input)                                                    #convert input color names to int
+            if input_colour.val_color  in range(1,6):                                                                 #if input color names is between 1 and 5
+                input_colour.view_graphs = input('Do you want to view the graphs? (yes/no): ')           #prints show graps
                 
-            if (view_graphs == "yes") or (view_graphs == "no"):                         #if input of show graphs is yes or no
-                print('\n                        STATUS')                               #print status
-                break                                                                   #leave the while loop 
+                if (input_colour.view_graphs == "yes") or (input_colour.view_graphs == "no"):
+                    print(color_names[input_colour.val_color])                                           #if input of show graphs is yes or no
+                    print('\n                        STATUS')                                            #print status
+                    break                                                                                #leave the while loop 
+                else:
+                    print("\n \u001b[1m EROOR: insert yes or no \u001b[0m \n")                           #error if show graphs is not yes or no
+
             else:
-                print("\n \u001b[1m EROOR: insert yes or no \u001b[0m \n")              #error if show graphs is not yes or no
-
-        else:
-            print("\n \u001b[1m ERROR: insert a valid colour number \u001b[0m \n")      #error if input color name is not between 1 and 6
-    except ValueError:
-        print("\n \u001b[1m EROOR: please choose a number fom 1 to 5 \u001b[0m \n")     #error if input color name is not int
-
+                print("\n \u001b[1m ERROR: insert a valid colour number \u001b[0m \n")                   #error if input color name is not between 1 and 6
+        except ValueError:
+            print("\n \u001b[1m EROOR: please choose a number fom 1 to 5 \u001b[0m \n")                  #error if input color name is not int
+    
+start = tm.perf_counter()
 
 #making graphs of O3 per hour
 def make_graph(hours):
     map_proj = ccrs.PlateCarree()
-    fig = plt.figure(f'O3 in {hours}h')
+    fig = plt.figure()
+    plt.title(f'O3 in {hours}h')
 
     for m in range(len(models)):
         print('\n ..............','Hours: ', hours,' Models: ', (m + 1), '.............. \n')
         
-        ax1 = plt.subplot(4, 2, (m + 1), projection = map_proj)
-        ax1.coastlines(zorder = 3)
-        plt.subplots_adjust(hspace = 0.4)
+        ax1 = plt.subplot(5, 2, (m + 1), projection = map_proj)                                         #plot graphs in 2 colums in 4 rows
+        ax1.coastlines(zorder = 3)                                                                      #creates the cost lines
+        plt.subplots_adjust(hspace = 0.5)                                                               #space between plots
         ax1.set_title(f'{modelsNames[m]}', fontsize = 9)        
-
-        if color_input not in color_names:
-            img = plt.contour(long, lat, models[m][hours, :, :], 1000, transform = map_proj)            
-        else:
-            img = plt.contour(long, lat, models[m][hours, :, :], 1000, cmap = color_names[color_input], transform = map_proj)
-
-    set_axis(ax1, hours, fig, img)                                                          #calls function to set the axis on graph
+        img = plt.contour(long, lat, models[m][hours, :, :], 1000, 
+                cmap = color_names[input_colour.val_color], transform = map_proj)  
+    
+    cax = ax1.inset_axes([-3.4, -1, 5, 0.3])
+    plt.colorbar(img, cax = cax, anchor = (3, 0.5), orientation = "horizontal")
+    mticker.Locator.MAXTICKS = 2000                                                         #mesurments on the colorbar
+    plt.suptitle(f'O3 levels in {hours} hour(s)')
     
     if not os.path.exists('O3_images'):                                                     #checks if folder exists
         os.makedirs('O3_images')                                                            #if not is created
 
     plt.savefig(f'O3_images/{hours}.png')                                                   #saves img in forger with hour as name
-    quit_button(fig)                                                                        #incorporates the quit button
     
-    if view_graphs == "yes":                                                                #if input show graphs is yes
-        plt.show()                                                                          #show graphs
-
-
-#function to set graphs axis
-def set_axis(ax1, hours, fig, img):
-    axins = inset_axes( ax1,                                                                #setting the axis
-            width = "7%",  
-            height = "500%",  
-            loc = 'lower left',
-            bbox_to_anchor = (1.2, 0., 1, 1),
-            bbox_transform = ax1.transAxes,
-            )
-
-    plt.colorbar(img, cax = axins, orientation = "vertical")                                #sets colorbar
-    mticker.Locator.MAXTICKS = 2000                                                         #mesurments on the colorbar
-    fig.suptitle(f'O3 levels in {hours} hour(s)')                                           #window's title
-
-#interface quit button -- quits all graphs at once
-def quit_button(fig):
-
+    #interface quit button -- quits all graphs at once
     def handler(*args, **kwargs):
         print('Bye!')
         plt.close('all')                                                                    #closes all windows
 
-    ax_color_button = plt.axes([0.825, 0.04, 0.14, 0.05])                                   #button's dimentions
+    ax_color_button = plt.axes([0.425, 0.04, 0.14, 0.05])                                   #button's dimentions
     color_button = Button(ax_color_button ,'Quit all')                                      #€button's messagen when clicked
-    color_button.on_clicked(handler)
+    color_button.on_clicked(handler)                                                                        #incorporates the quit button
+    
+    if input_colour.view_graphs == "yes":                                                                #if input show graphs is yes
+        plt.show()                                                                          #show graphs
 
 
 #makes de parallel process
@@ -146,12 +130,10 @@ def parallel_processing():
     with concurrent.futures.ProcessPoolExecutor(max_workers = 24) as executer:              #set num of parallel processes
         hours = [i for i in range(1,25)]                                                    #each process gets an hiur
         executer.map(make_graph, hours)                                                     #executs the processess
-        concurrent.futures.wait(fs, timeout=None, return_when=ALL_COMPLETED)                #waits for all to compleate bf giving results
 
 
-  
-
-if __name__ == '__main__':   
+if __name__ == '__main__':
+    input_colour()   
     parallel_processing()
     
 
